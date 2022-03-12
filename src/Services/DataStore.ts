@@ -1,10 +1,17 @@
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
-import { firebaseConfig } from "src/APIConfigs/Configs";
+import { FileType } from "src/Model/FileType";
+import { collections } from "../APIConfigs/Connect";
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
+export const addDocument = async (file: FileType) => {
+    const addResult = await collections.files?.insertOne(file);
+}
 
+export const deleteDocument = async (id: string) => {
+    const deleteResult = await collections.files?.deleteOne({ id });
+}
+
+export const updateDocument = async (id: string, isLike: boolean) => {
+    const updatedDocument = await collections.files?.updateOne(
+        { id },
+        { $inc: {likes: isLike ? 1 : 0, dislikes: isLike ? 0 : 1}}
+    )
+}

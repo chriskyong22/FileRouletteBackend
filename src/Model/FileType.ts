@@ -1,7 +1,7 @@
 export interface FileType {
-    fileName: string;
+    name: string;
     mimetype: string;
-    fileSize: number;
+    size: number;
     path: string;
     likes: number;
     dislikes: number;
