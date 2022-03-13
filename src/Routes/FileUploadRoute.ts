@@ -1,4 +1,4 @@
-import express, { Response }from "express";
+import express, { Response, Request, NextFunction, ErrorRequestHandler  }from "express";
 import multer from "multer";
 import path from "path";
 import { FileType } from "../Model/FileType";
@@ -32,7 +32,15 @@ var corsOptions: cors.CorsOptions = {
 }
 router.use(cors(corsOptions));
 
-router.post('/', upload, async (req, res) => {
+const fileSizeLimitErrorMiddleware: ErrorRequestHandler = (error, _req: Request, res: Response, next: NextFunction) => {
+    if (error) {
+        res.status(403).send("Too large of a file, 1 MB limit!").end();
+    } else {
+        next();
+    }
+}
+
+router.post('/', upload, fileSizeLimitErrorMiddleware, async (req: Request, res: Response) => {
     if (req.file) {
         const file = req.file;
         const fileData: FileType = {
@@ -71,10 +79,10 @@ router.post('/', upload, async (req, res) => {
         if (document) {
             await sendRandomFile(document as FileType, res);
         } else {
-            res.sendStatus(204).send("There are no files on the server!");
+            res.status(204).send("There are no files on the server!").end();
         }
     } else {
-        res.sendStatus(403).send("Please attach a file").end();
+        res.status(403).send("Please attach a file").end();
     }
 })
 
@@ -99,7 +107,7 @@ export const sendRandomFile = async (file: FileType, res: Response) => {
     }
 }
 
-router.get('/test', (_req, res) => {
+router.get('/testDownload', (_req, res) => {
     try {
         const fileStream = downloadFile('test.txt');
         res.attachment('test.test');
