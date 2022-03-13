@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import { FileType } from "../Model/FileType";
 import fs from "fs/promises";
-import { downloadFile, uploadFile } from "../Services/FileStore";
+import { deleteFile, downloadFile, uploadFile } from "../Services/FileStore";
 import cors from "cors";
 import { randomDocument, addDocument, deleteDocument } from "../Services/DataStore"
 
@@ -53,17 +53,8 @@ router.post('/', upload, fileSizeLimitErrorMiddleware, async (req: Request, res:
         }
         file.path = __dirname + "\\..\\..\\" + file.path;
         console.log(file.path);
-        // Step 1: Update database 
-        try {
-            addDocument(fileData);
-        } catch (error) {
-            await fs.unlink(file.path);
-            console.error(error);
-            res.sendStatus(500).end();
-            return;
-        }
 
-        // Step 2: Upload to firebase & remove it from the server
+        // Step 1: Upload to firebase & remove it from the server
         try {
             await uploadFile(file.path, fileData);
         } catch(error) {
@@ -73,6 +64,20 @@ router.post('/', upload, fileSizeLimitErrorMiddleware, async (req: Request, res:
             return;
         }
         await fs.unlink(file.path);
+
+        // Step 2: Update database 
+        try {
+            addDocument(fileData);
+        } catch (error) {
+            console.error(error);
+            try {
+                await deleteFile(fileData.path);
+            } catch (error) {
+                console.error(error);
+            }
+            res.sendStatus(500).end();
+            return;
+        }
 
         // Step 3: Find a random file and respond back to client.
         const document = (await randomDocument())[0];
