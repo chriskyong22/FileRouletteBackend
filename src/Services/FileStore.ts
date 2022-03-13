@@ -24,7 +24,7 @@ export const uploadTest = async () => {
 
 export const uploadFile = async(filePath: string, fileData: FileType) => {
     let file = await fs.readFile(filePath);
-
+    console.log(filePath);
     const fileRef = ref(root, fileData.path);
     const metadata = {
         contentType: fileData.mimetype

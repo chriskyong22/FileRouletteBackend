@@ -5,12 +5,11 @@ import { FileType } from "../Model/FileType";
 import fs from "fs/promises";
 import { downloadFile, uploadFile } from "../Services/FileStore";
 import cors from "cors";
-import { collections } from "../APIConfigs/Connect";
 import { randomDocument, addDocument, deleteDocument } from "../Services/DataStore"
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, '../tmp/')
+        cb(null, '../../tmp/')
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
@@ -28,7 +27,7 @@ const upload = multer({
 const router = express.Router();
 router.use(cors());
 
-router.get('/', async (req, res) => {
+router.get('/', upload, async (req, res) => {
     if (req.file) {
         const file = req.file;
         const fileData: FileType = {
@@ -39,6 +38,7 @@ router.get('/', async (req, res) => {
             likes: 0,
             dislikes: 0
         }
+
         // Step 1: Update database 
         try {
             addDocument(fileData);
@@ -49,29 +49,30 @@ router.get('/', async (req, res) => {
             return;
         }
 
-        // Step 2: Upload to firebase 
+        // Step 2: Upload to firebase & remove it from the server
         try {
-            uploadFile(file.path, fileData);
+            await uploadFile(file.path, fileData);
         } catch(error) {
             await fs.unlink(file.path);
             res.sendStatus(500).end();
             deleteDocument(fileData.path);
             return;
         }
+        await fs.unlink(file.path);
 
         // Step 3: Find a random file and respond back to client.
         const document = (await randomDocument())[0];
         if (document) {
-            sendRandomFile(document as FileType, res);
+            await sendRandomFile(document as FileType, res);
         } else {
-            res.sendStatus(200).send("There are no files on the server!");
+            res.sendStatus(204).send("There are no files on the server!");
         }
     } else {
         res.sendStatus(403).send("Please attach a file").end();
     }
 })
 
-export const sendRandomFile = (file: FileType, res: Response) => {
+export const sendRandomFile = async (file: FileType, res: Response) => {
     try {
         const fileStream = downloadFile(file.path);
         res.attachment(file.name);
@@ -87,7 +88,8 @@ export const sendRandomFile = (file: FileType, res: Response) => {
             res.status(200).end();
         })
     } catch (error) {
-        res.status(404).end();
+        await deleteDocument(file.path);
+        res.status(204).end();
     }
 }
 
