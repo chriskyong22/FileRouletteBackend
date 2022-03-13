@@ -1,10 +1,12 @@
-import express from "express";
+import express, { Response }from "express";
 import multer from "multer";
 import path from "path";
 import { FileType } from "../Model/FileType";
 import fs from "fs/promises";
-import { downloadFile } from "src/Services/FileStore";
+import { downloadFile, uploadFile } from "../Services/FileStore";
 import cors from "cors";
+import { collections } from "../APIConfigs/Connect";
+import { randomDocument, addDocument, deleteDocument } from "../Services/DataStore"
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -24,7 +26,9 @@ const upload = multer({
 }).single('file');
 
 const router = express.Router();
-router.get('/', (req, res) => {
+router.use(cors());
+
+router.get('/', async (req, res) => {
     if (req.file) {
         const file = req.file;
         const fileData: FileType = {
@@ -35,17 +39,77 @@ router.get('/', (req, res) => {
             likes: 0,
             dislikes: 0
         }
-        // Step 1: Upload to firebase 
-        // Step 2: Update database 
-        res.setHeader('content-type', 'text/html; charset=UTF-8');
-        downloadFile('text').pipe(res);
-        res.end();
+        // Step 1: Update database 
+        try {
+            addDocument(fileData);
+        } catch (error) {
+            await fs.unlink(file.path);
+            console.error(error);
+            res.sendStatus(500).end();
+            return;
+        }
+
+        // Step 2: Upload to firebase 
+        try {
+            uploadFile(file.path, fileData);
+        } catch(error) {
+            await fs.unlink(file.path);
+            res.sendStatus(500).end();
+            deleteDocument(fileData.path);
+            return;
+        }
+
+        // Step 3: Find a random file and respond back to client.
+        const document = (await randomDocument())[0];
+        if (document) {
+            sendRandomFile(document as FileType, res);
+        } else {
+            res.sendStatus(200).send("There are no files on the server!");
+        }
     } else {
-        res.sendStatus(403).end();
+        res.sendStatus(403).send("Please attach a file").end();
     }
 })
 
-router.get('/Test')
+export const sendRandomFile = (file: FileType, res: Response) => {
+    try {
+        const fileStream = downloadFile(file.path);
+        res.attachment(file.name);
+        fileStream.on('data', (data) => {
+            res.write(data);
+        })
+        fileStream.on('error', (err) => {
+            console.log("Error has occurred" , err);
+            res.status(500).end();
+        })
+        fileStream.on('end', () => {
+            console.log("Ended");
+            res.status(200).end();
+        })
+    } catch (error) {
+        res.status(404).end();
+    }
+}
+
+router.get('/Test', (_req, res) => {
+    try {
+        const fileStream = downloadFile('test.txt');
+        res.attachment('test.test');
+        fileStream.on('data', (data) => {
+            res.write(data);
+        })
+        fileStream.on('error', (err) => {
+            console.log("Error has occurred" , err);
+            res.status(500).end();
+        })
+        fileStream.on('end', () => {
+            console.log("Ended");
+            res.status(200).end();
+        })
+    } catch (error) {
+        res.status(404).end();
+    }
+})
 
 
 export default router;

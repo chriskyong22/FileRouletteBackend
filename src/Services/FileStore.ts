@@ -1,6 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getBlob, getStorage, getStream, ref, uploadBytes, uploadString } from "firebase/storage";
+import fs from "fs/promises"
+import { deleteObject, getStorage, getStream, ref, uploadBytes, uploadString } from "firebase/storage";
+import { FileType } from "../Model/FileType";
 import { googleCloudConfig } from "../APIConfigs/Configs"
 
 
@@ -20,11 +22,12 @@ export const uploadTest = async () => {
 }
 
 
-export const uploadFile = async(file: File) => {
-    const fileRef = ref(root, file.name);
-    
+export const uploadFile = async(filePath: string, fileData: FileType) => {
+    let file = await fs.readFile(filePath);
+
+    const fileRef = ref(root, fileData.path);
     const metadata = {
-        contentType: file.type
+        contentType: fileData.mimetype
     }
 
     return uploadBytes(fileRef, file, metadata).then((snapshot) => {
@@ -35,4 +38,9 @@ export const uploadFile = async(file: File) => {
 export const downloadFile = (path: string): NodeJS.ReadableStream => {
     const fileRef = ref(root, path);
     return getStream(fileRef);
+}
+
+export const deleteFile = async (path: string): Promise<void> => {
+    const fileRef = ref(root, path);
+    return deleteObject(fileRef);
 }
