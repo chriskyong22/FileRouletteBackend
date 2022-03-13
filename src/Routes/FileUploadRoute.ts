@@ -9,7 +9,7 @@ import { randomDocument, addDocument, deleteDocument } from "../Services/DataSto
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, '../../tmp/')
+        cb(null, './tmp/')
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
@@ -25,9 +25,14 @@ const upload = multer({
 }).single('file');
 
 const router = express.Router();
-router.use(cors());
+var corsOptions: cors.CorsOptions = {
+    origin: 'http://localhost:3000',
+    methods: "GET,POST",
+    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+}
+router.use(cors(corsOptions));
 
-router.get('/', upload, async (req, res) => {
+router.post('/', upload, async (req, res) => {
     if (req.file) {
         const file = req.file;
         const fileData: FileType = {
@@ -38,7 +43,8 @@ router.get('/', upload, async (req, res) => {
             likes: 0,
             dislikes: 0
         }
-
+        file.path = __dirname + "\\..\\..\\" + file.path;
+        console.log(file.path);
         // Step 1: Update database 
         try {
             addDocument(fileData);
@@ -93,7 +99,7 @@ export const sendRandomFile = async (file: FileType, res: Response) => {
     }
 }
 
-router.get('/Test', (_req, res) => {
+router.get('/test', (_req, res) => {
     try {
         const fileStream = downloadFile('test.txt');
         res.attachment('test.test');

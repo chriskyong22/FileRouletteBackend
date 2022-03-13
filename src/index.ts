@@ -15,7 +15,7 @@ connectToDatabase().then(() => {
         res.status(200).end();
     })
 
-    app.use('/download', uploadRoute);
+    app.use('/upload', uploadRoute);
 
     app.get('/testUpload', async (_req, res) => {
         await uploadTest();
@@ -24,6 +24,7 @@ connectToDatabase().then(() => {
     app.listen(PORT, () => {
         console.log(`Server is running on ${PORT}`);
     })
+    
 }).catch((error) => {
     console.error(error);
     process.exit();
