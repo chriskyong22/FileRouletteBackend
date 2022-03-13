@@ -90,6 +90,7 @@ export const sendRandomFile = async (file: FileType, res: Response) => {
     try {
         const fileStream = downloadFile(file.path);
         res.attachment(file.name);
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
         fileStream.on('data', (data) => {
             res.write(data);
         })
